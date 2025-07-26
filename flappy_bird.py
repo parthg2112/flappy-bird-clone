@@ -7,7 +7,7 @@ def draw_floor():
 def create_pipe():
     random_pipe_pos = random.choice(pipe_height)
     bottom_pipe = pipe_surface.get_rect(midtop = (700, random_pipe_pos))
-    top_pipe = pipe_surface.get_rect(midbottom = (700, random_pipe_pos - 120))
+    top_pipe = pipe_surface.get_rect(midbottom = (700, random_pipe_pos - pipe_gap))
     return bottom_pipe, top_pipe
 
 def move_pipes(pipes):
@@ -89,6 +89,41 @@ def load_high_score():
     except:
         return 0  # Return 0 if file doesn't exist or can't be read
 
+def draw_difficulty_buttons():
+    # Easy button
+    easy_color = (0, 200, 0) if difficulty == "easy" else (80, 80, 80)
+    pygame.draw.rect(screen, easy_color, easy_button)
+    pygame.draw.rect(screen, (255, 255, 255), easy_button, 2)
+    easy_text = smallFont.render("EASY", True, (255, 255, 255))
+    screen.blit(easy_text, (easy_button.x + 12, easy_button.y + 8))
+    
+    # Normal button
+    normal_color = (200, 200, 0) if difficulty == "normal" else (80, 80, 80)
+    pygame.draw.rect(screen, normal_color, normal_button)
+    pygame.draw.rect(screen, (255, 255, 255), normal_button, 2)
+    normal_text = smallFont.render("NORMAL", True, (255, 255, 255))
+    screen.blit(normal_text, (normal_button.x + 5, normal_button.y + 8))
+    
+    # Hard button
+    hard_color = (200, 0, 0) if difficulty == "hard" else (80, 80, 80)
+    pygame.draw.rect(screen, hard_color, hard_button)
+    pygame.draw.rect(screen, (255, 255, 255), hard_button, 2)
+    hard_text = smallFont.render("HARD", True, (255, 255, 255))
+    screen.blit(hard_text, (hard_button.x + 12, hard_button.y + 8))
+
+def set_difficulty(diff):
+    global difficulty, gravity, pipe_gap
+    difficulty = diff
+    if diff == "easy":
+        gravity = 0.08
+        pipe_gap = 150
+    elif diff == "normal":
+        gravity = 0.1
+        pipe_gap = 120
+    elif diff == "hard":
+        gravity = 0.15
+        pipe_gap = 90
+
 pygame.mixer.pre_init(frequency=44100, size=16, channels=1, buffer=512)
 pygame.init()
 
@@ -100,9 +135,17 @@ pygame.display.set_caption("Flappy Bird")
 clock = pygame.time.Clock()
 
 gameFont = pygame.font.Font('04B_19__.TTF',30)
+smallFont = pygame.font.Font('04B_19__.TTF',16)
+
+# difficulty buttons (center aligned)
+easy_button = pygame.Rect(42, 10, 60, 25)
+normal_button = pygame.Rect(112, 10, 70, 25)
+hard_button = pygame.Rect(192, 10, 60, 25)
 
 # game variables
+difficulty = "normal"
 gravity = 0.1
+pipe_gap = 120
 bird_movement = 0
 game_active = True
 
@@ -159,18 +202,29 @@ while True:
                 can_score = True
 
         if event.type == pygame.MOUSEBUTTONDOWN:
-            if event.button == pygame.BUTTON_LEFT and game_active:
-                bird_movement = 0
-                bird_movement -= 3
-                flap_sound.play()
-
-            if game_active == False and event.button == pygame.BUTTON_LEFT:
-                game_active = True
-                pipe_list.clear()
-                bird_rect.center = (50,256)
-                bird_movement = 0
-                score = 0
-                can_score = True
+            if event.button == pygame.BUTTON_LEFT:
+                # Check difficulty button clicks only when game is not active
+                if not game_active:
+                    if easy_button.collidepoint(event.pos):
+                        set_difficulty("easy")
+                    elif normal_button.collidepoint(event.pos):
+                        set_difficulty("normal")
+                    elif hard_button.collidepoint(event.pos):
+                        set_difficulty("hard")
+                
+                if game_active:
+                    bird_movement = 0
+                    bird_movement -= 3
+                    flap_sound.play()
+                elif game_active == False:
+                    # Only restart if not clicking on difficulty buttons
+                    if not (easy_button.collidepoint(event.pos) or normal_button.collidepoint(event.pos) or hard_button.collidepoint(event.pos)):
+                        game_active = True
+                        pipe_list.clear()
+                        bird_rect.center = (50,256)
+                        bird_movement = 0
+                        score = 0
+                        can_score = True
 
         if event.type == SPAWNPIPE:
             pipe_list.extend(create_pipe())
@@ -203,6 +257,8 @@ while True:
         screen.blit(game_over_surface, game_over_rect)
         high_score = update_score(score, high_score)
         score_display('game_over')
+        # Only show difficulty buttons when not in active game
+        draw_difficulty_buttons()
 
     # floor
     floor_x_pos -= 1
